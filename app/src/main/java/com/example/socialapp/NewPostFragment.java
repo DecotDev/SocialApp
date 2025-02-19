@@ -183,7 +183,7 @@ public class NewPostFragment extends Fragment {
                         return;
                     }
                     String downloadUrl = "https://cloud.appwrite.io/v1/storage/buckets/" + getString(R.string.APPWRITE_STORAGE_BUCKET_ID) + "/files/" +
-                    result.getId() + "/view?project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&mode=admin";
+                            result.getId() + "/view?project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&mode=admin";
 
                     mainHandler.post(() -> {
                         guardarEnAppWrite(user, postText, downloadUrl);
