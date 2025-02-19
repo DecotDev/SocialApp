@@ -40,6 +40,14 @@
                 android:text="Contenido"
                 android:textSize="20sp" />
 
+            <ImageView
+                android:id="@+id/mediaImage"
+                android:layout_width="196dp"
+                android:layout_height="196dp"
+                android:layout_marginTop="10dp"
+                android:adjustViewBounds="true" />
+
+
             <LinearLayout
                 android:id="@+id/likeLinearLayout"
                 android:layout_width="wrap_content"
