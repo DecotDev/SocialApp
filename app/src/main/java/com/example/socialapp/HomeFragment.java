@@ -23,12 +23,14 @@ import com.google.android.material.snackbar.Snackbar;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import io.appwrite.Client;
+import io.appwrite.Query;
 import io.appwrite.coroutines.CoroutineCallback;
 import io.appwrite.exceptions.AppwriteException;
 import io.appwrite.models.DocumentList;
@@ -114,7 +116,9 @@ public class HomeFragment extends Fragment {
         try {
             databases.listDocuments(getString(R.string.APPWRITE_DATABASE_ID), // databaseId
                     getString(R.string.APPWRITE_POSTS_COLLECTION_ID), // collectionId
-                    new ArrayList<>(), // queries (optional)
+                    //new ArrayList<>(), // queries (optional)
+                    Arrays.asList(Query.Companion.orderDesc("time"),
+                            Query.Companion.limit(50)),
 
                     new CoroutineCallback<>((result, error) -> {
                         if (error != null) {
