@@ -40,6 +40,14 @@
                 android:text="Contenido"
                 android:textSize="20sp" />
 
+            <TextView
+                android:id="@+id/timeTextView"
+                style="@style/Base.TextAppearance.AppCompat.Small"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:text="DD/MM/YYYY hh:mm" />
+
             <ImageView
                 android:id="@+id/mediaImage"
                 android:layout_width="196dp"

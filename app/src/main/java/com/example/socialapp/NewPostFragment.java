@@ -42,6 +42,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -144,6 +145,7 @@ public class NewPostFragment extends Fragment {
         data.put("content", content);
         data.put("mediaType", mediaTipo);
         data.put("mediaUrl", mediaUrl);
+        data.put("time", Calendar.getInstance().getTimeInMillis());
 
         // Crear el documento
         try {
