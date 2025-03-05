@@ -117,8 +117,7 @@ public class HomeFragment extends Fragment {
             databases.listDocuments(getString(R.string.APPWRITE_DATABASE_ID), // databaseId
                     getString(R.string.APPWRITE_POSTS_COLLECTION_ID), // collectionId
                     //new ArrayList<>(), // queries (optional)
-                    Arrays.asList(Query.Companion.orderDesc("time"),
-                            Query.Companion.limit(50)),
+                    Arrays.asList(Query.Companion.orderDesc("time"), Query.Companion.limit(50)),
 
                     new CoroutineCallback<>((result, error) -> {
                         if (error != null) {
