@@ -161,45 +161,95 @@ public class HomeFragment extends Fragment {
         @Override
         public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
             Map<String, Object> post = lista.getDocuments().get(position).getData();
-            if (post.get("authorPhotoUrl") == null) {
-                holder.authorPhotoImageView.setImageResource(R.drawable.user);
-            } else {
 
-                Glide.with(getContext()).load(post.get("authorPhotoUrl").toString()).circleCrop().into(holder.authorPhotoImageView);
+            // Set default profile picture while fetching the actual one
+            holder.authorPhotoImageView.setImageResource(R.drawable.user);
+
+            // Ensure post contains a valid user ID
+            if (post.get("uid") != null) {
+                String userId = post.get("uid").toString();
+
+                // Fetch profile picture from ProfilePictures collection
+                Databases databases = new Databases(client);
+                try {
+                    databases.listDocuments(
+                            getString(R.string.APPWRITE_DATABASE_ID),
+                            getString(R.string.APPWRITE_PROFILE_PICTURES_COLLECTION_ID),
+                            Arrays.asList(Query.Companion.equal("userId", userId)), // Fix: Use Query.Companion.equal()
+                            new CoroutineCallback<>((result, error) -> {
+                                if (error != null || result == null || result.getDocuments().isEmpty()) {
+                                    return; // No profile picture found, keep default
+                                }
+
+                                String imageUrl = result.getDocuments().get(0).getData().get("imageUrl").toString();
+                                holder.itemView.post(() ->  // Fix: Use post() to update UI safely
+                                        Glide.with(holder.itemView.getContext())
+                                                .load(imageUrl)
+                                                .circleCrop()
+                                                .into(holder.authorPhotoImageView)
+                                );
+                            }));
+                } catch (AppwriteException e) {
+                    e.printStackTrace();
+                }
             }
+
             holder.authorTextView.setText(post.get("author").toString());
             holder.contentTextView.setText(post.get("content").toString());
 
-            //Fecha y hora
-            SimpleDateFormat fromatter = new SimpleDateFormat("dd/MM/yyyy HH:mm");
-            Calendar calendar = Calendar.getInstance();
-            if (post.get("time") != null) calendar.setTimeInMillis((long) post.get("time"));
-            else calendar.setTimeInMillis(0);
-            holder.timeTextView.setText(fromatter.format(calendar.getTime()));
+            // Make the profile picture clickable to navigate to the user's profile
+            holder.authorPhotoImageView.setOnClickListener(view -> {
+                Bundle bundle = new Bundle();
+                bundle.putString("profileUserId", post.get("uid").toString());
+                navController.navigate(R.id.profileFragment, bundle);
+            });
 
-            // Gestion de likes
+            // Format the post timestamp
+            SimpleDateFormat formatter = new SimpleDateFormat("dd/MM/yyyy HH:mm");
+            Calendar calendar = Calendar.getInstance();
+            if (post.get("time") != null) {
+                calendar.setTimeInMillis((long) post.get("time"));
+            } else {
+                calendar.setTimeInMillis(0);
+            }
+            holder.timeTextView.setText(formatter.format(calendar.getTime()));
+
+            // Handle Likes
             List<String> likes = (List<String>) post.get("likes");
-            if (likes.contains(userId)) holder.likeImageView.setImageResource(R.drawable.like_on);
-            else holder.likeImageView.setImageResource(R.drawable.like_off);
+            if (likes.contains(userId)) {
+                holder.likeImageView.setImageResource(R.drawable.like_on);
+            } else {
+                holder.likeImageView.setImageResource(R.drawable.like_off);
+            }
+
             holder.numLikesTextView.setText(String.valueOf(likes.size()));
+
             holder.likeImageView.setOnClickListener(view -> {
                 Databases databases = new Databases(client);
                 Handler mainHandler = new Handler(Looper.getMainLooper());
-                List<String> nuevosLikes = likes;
-                if (nuevosLikes.contains(userId)) nuevosLikes.remove(userId);
-                else nuevosLikes.add(userId);
+                List<String> nuevosLikes = new ArrayList<>(likes);
+
+                if (nuevosLikes.contains(userId)) {
+                    nuevosLikes.remove(userId);
+                } else {
+                    nuevosLikes.add(userId);
+                }
+
                 Map<String, Object> data = new HashMap<>();
                 data.put("likes", nuevosLikes);
+
                 try {
-                    databases.updateDocument(getString(R.string.APPWRITE_DATABASE_ID), getString(R.string.APPWRITE_POSTS_COLLECTION_ID), post.get("$id").toString(), // documentId
-                            data, // data (optional)
-                            new ArrayList<>(), // permissions (optional)
+                    databases.updateDocument(getString(R.string.APPWRITE_DATABASE_ID),
+                            getString(R.string.APPWRITE_POSTS_COLLECTION_ID),
+                            post.get("$id").toString(),
+                            data,
+                            new ArrayList<>(),
                             new CoroutineCallback<>((result, error) -> {
                                 if (error != null) {
                                     error.printStackTrace();
                                     return;
                                 }
-                                System.out.println("Likes actualizados:" + result.toString());
+                                System.out.println("Likes actualizados: " + result.toString());
                                 mainHandler.post(() -> obtenerPosts());
                             }));
                 } catch (AppwriteException e) {
@@ -207,7 +257,7 @@ public class HomeFragment extends Fragment {
                 }
             });
 
-            // Miniatura de media
+            // Display media (if exists)
             if (post.get("mediaUrl") != null) {
                 holder.mediaImageView.setVisibility(View.VISIBLE);
                 if ("audio".equals(post.get("mediaType").toString())) {
@@ -222,10 +272,7 @@ public class HomeFragment extends Fragment {
             } else {
                 holder.mediaImageView.setVisibility(View.GONE);
             }
-
-
         }
-
         @Override
         public int getItemCount() {
             return lista == null ? 0 : lista.getDocuments().size();
