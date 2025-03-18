@@ -162,6 +162,8 @@ public class HomeFragment extends Fragment {
         public void onBindViewHolder(@NonNull PostViewHolder holder, int position) {
             Map<String, Object> post = lista.getDocuments().get(position).getData();
 
+
+
             // Set default profile picture while fetching the actual one
             holder.authorPhotoImageView.setImageResource(R.drawable.user);
 
@@ -192,6 +194,30 @@ public class HomeFragment extends Fragment {
                 } catch (AppwriteException e) {
                     e.printStackTrace();
                 }
+            }
+
+            // Get references to the new TextViews
+            TextView hashtagsTextView = holder.itemView.findViewById(R.id.hashtagsTextView);
+            TextView mencionesTextView = holder.itemView.findViewById(R.id.mencionesTextView);
+
+            // Fetch hashtags and mentions
+            List<String> hashtags = (List<String>) post.get("hashtags");
+            List<String> menciones = (List<String>) post.get("menciones");
+
+            // Display Hashtags
+            if (hashtags != null && !hashtags.isEmpty()) {
+                hashtagsTextView.setText("#" + String.join(", #", hashtags));
+                hashtagsTextView.setVisibility(View.VISIBLE);
+            } else {
+                hashtagsTextView.setVisibility(View.GONE);
+            }
+
+            // Display Mentions
+            if (menciones != null && !menciones.isEmpty()) {
+                mencionesTextView.setText("@" + String.join(", @", menciones));
+                mencionesTextView.setVisibility(View.VISIBLE);
+            } else {
+                mencionesTextView.setVisibility(View.GONE);
             }
 
             holder.authorTextView.setText(post.get("author").toString());

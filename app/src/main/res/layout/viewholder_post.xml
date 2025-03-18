@@ -41,6 +41,27 @@
                 android:textSize="20sp" />
 
             <TextView
+                android:id="@+id/hashtagsTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#1DA1F2"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:visibility="gone"
+                android:paddingTop="4dp"/>
+
+            <TextView
+                android:id="@+id/mencionesTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#FF9800"
+                android:textStyle="bold"
+                android:textSize="14sp"
+                android:visibility="gone"
+                android:paddingTop="4dp"/>
+
+
+            <TextView
                 android:id="@+id/timeTextView"
                 style="@style/Base.TextAppearance.AppCompat.Small"
                 android:layout_width="wrap_content"
