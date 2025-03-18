@@ -141,6 +141,27 @@ public class ProfileFragment extends Fragment {
                 getString(R.string.APPWRITE_PROFILE_PICTURES_COLLECTION_ID),
                 Arrays.asList(Query.Companion.equal("userId", profileUserId)),
                 new CoroutineCallback<>((result, error) -> {
+                    if (error != null || result.getDocuments().isEmpty()) {
+                        // No profile picture found, set default
+                        requireActivity().runOnUiThread(() ->
+                                photoImageView.setImageResource(R.drawable.user) // user.xml
+                        );
+                        return;
+                    }
+
+                    // If profile picture exists, load it with Glide
+                    String imageUrl = result.getDocuments().get(0).getData().get("imageUrl").toString();
+                    requireActivity().runOnUiThread(() ->
+                            Glide.with(requireView()).load(imageUrl).circleCrop().into(photoImageView)
+                    );
+                }));
+    }
+
+    /*private void fetchProfilePicture() throws AppwriteException {
+        databases.listDocuments(getString(R.string.APPWRITE_DATABASE_ID),
+                getString(R.string.APPWRITE_PROFILE_PICTURES_COLLECTION_ID),
+                Arrays.asList(Query.Companion.equal("userId", profileUserId)),
+                new CoroutineCallback<>((result, error) -> {
                     if (error != null || result.getDocuments().isEmpty()) return;
 
                     String imageUrl = result.getDocuments().get(0).getData().get("imageUrl").toString();
@@ -148,7 +169,7 @@ public class ProfileFragment extends Fragment {
                             Glide.with(requireView()).load(imageUrl).circleCrop().into(photoImageView)
                     );
                 }));
-    }
+    }*/
 
     private void checkIfFollowing() throws AppwriteException {
         databases.listDocuments(getString(R.string.APPWRITE_DATABASE_ID),
