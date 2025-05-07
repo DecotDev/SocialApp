@@ -16,6 +16,7 @@
     <string name="APPWRITE_STORAGE_BUCKET_ID">67b5f7cf003de813a757</string>
     <string name="APPWRITE_PROFILE_PICTURES_COLLECTION_ID">67d1aecd00045834b513</string>
     <string name="APPWRITE_FOLLOWERS_COLLECTION_ID">67d1a80300159a4ce8a1</string>
+
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

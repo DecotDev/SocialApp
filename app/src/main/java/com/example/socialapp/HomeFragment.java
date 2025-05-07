@@ -198,11 +198,11 @@ public class HomeFragment extends Fragment {
 
             // Get references to the new TextViews
             TextView hashtagsTextView = holder.itemView.findViewById(R.id.hashtagsTextView);
-            TextView mencionesTextView = holder.itemView.findViewById(R.id.mencionesTextView);
+            TextView mentionsTextView = holder.itemView.findViewById(R.id.mentionsTextView);
 
             // Fetch hashtags and mentions
             List<String> hashtags = (List<String>) post.get("hashtags");
-            List<String> menciones = (List<String>) post.get("menciones");
+            List<String> mentions = (List<String>) post.get("mentions");
 
             // Display Hashtags
             if (hashtags != null && !hashtags.isEmpty()) {
@@ -213,11 +213,11 @@ public class HomeFragment extends Fragment {
             }
 
             // Display Mentions
-            if (menciones != null && !menciones.isEmpty()) {
-                mencionesTextView.setText("@" + String.join(", @", menciones));
-                mencionesTextView.setVisibility(View.VISIBLE);
+            if (mentions != null && !mentions.isEmpty()) {
+                mentionsTextView.setText("@" + String.join(", @", mentions));
+                mentionsTextView.setVisibility(View.VISIBLE);
             } else {
-                mencionesTextView.setVisibility(View.GONE);
+                mentionsTextView.setVisibility(View.GONE);
             }
 
             holder.authorTextView.setText(post.get("author").toString());

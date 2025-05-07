@@ -1,13 +1,22 @@
 package com.example.socialapp;
 
-import static androidx.core.content.ContentProviderCompat.requireContext;
-
 import android.app.Activity;
-import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.MediaStore;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.EditText;
+import android.widget.ImageView;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -18,75 +27,72 @@ import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.provider.MediaStore;
-import android.provider.OpenableColumns;
-import android.text.TextUtils;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.ImageView;
-
 import com.bumptech.glide.Glide;
 import com.google.android.material.snackbar.Snackbar;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.appwrite.Client;
 import io.appwrite.coroutines.CoroutineCallback;
 import io.appwrite.exceptions.AppwriteException;
-import io.appwrite.models.InputFile;
 import io.appwrite.models.User;
 import io.appwrite.services.Account;
 import io.appwrite.services.Databases;
-import io.appwrite.services.Storage;
-
 
 public class NewPostFragment extends Fragment {
-
     Button publishButton;
     EditText postContentEditText;
     NavController navController;
     Client client;
     Account account;
-    AppViewModel appViewModel;
 
+    AppViewModel appViewModel;
     Uri mediaUri;
     String mediaTipo;
 
-
+    @androidx.annotation.Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        // Inflate the layout for this fragment
+    public View onCreateView(@NonNull LayoutInflater inflater, @androidx.annotation.Nullable ViewGroup container, @androidx.annotation.Nullable Bundle savedInstanceState) {
         return inflater.inflate(R.layout.fragment_new_post, container, false);
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
-
         navController = Navigation.findNavController(view);
-        appViewModel = new ViewModelProvider(requireActivity()).get(AppViewModel.class);
-        client = new Client(requireContext()).setProject(getString(R.string.APPWRITE_PROJECT_ID));
 
+        appViewModel = new ViewModelProvider(requireActivity()).get(AppViewModel.class);
+
+        client = new Client(requireContext()).setProject(getString(R.string.APPWRITE_PROJECT_ID));
         publishButton = view.findViewById(R.id.publishButton);
         postContentEditText = view.findViewById(R.id.postContentEditText);
-        publishButton.setOnClickListener(new View.OnClickListener() {
 
+        // Agregar un TextWatcher para detectar hashtags y menciones
+        postContentEditText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String text = s.toString();
+                detectHashtagsAndMentions(text);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {}
+        });
+
+        publishButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 publicar();
@@ -106,7 +112,6 @@ public class NewPostFragment extends Fragment {
         });
     }
 
-
     private void publicar() {
         String postContent = postContentEditText.getText().toString();
         if (TextUtils.isEmpty(postContent)) {
@@ -114,6 +119,7 @@ public class NewPostFragment extends Fragment {
             return;
         }
         publishButton.setEnabled(false);
+
         // Obtenemos información de la cuenta del autor
         account = new Account(client);
         try {
@@ -125,7 +131,7 @@ public class NewPostFragment extends Fragment {
                 if (mediaTipo == null) {
                     guardarEnAppWrite(result, postContent, null);
                 } else {
-                    pujaIguardarEnAppWrite(result, postContent);
+                    guardarEnAppWrite(result, postContent,mediaTipo);
                 }
             }));
         } catch (AppwriteException e) {
@@ -135,8 +141,10 @@ public class NewPostFragment extends Fragment {
 
     void guardarEnAppWrite(User<Map<String, Object>> user, String content, String mediaUrl) {
         Handler mainHandler = new Handler(Looper.getMainLooper());
+
         // Crear instancia del servicio Databases
         Databases databases = new Databases(client);
+
         // Datos del documento
         Map<String, Object> data = new HashMap<>();
         data.put("uid", user.getId().toString());
@@ -147,10 +155,19 @@ public class NewPostFragment extends Fragment {
         data.put("mediaUrl", mediaUrl);
         data.put("time", Calendar.getInstance().getTimeInMillis());
 
-        // Crear el documento
+        // Extraer hashtags y mentions del contenido del post
+        List<String> hashtags = extractHashtags(content);
+        List<String> mentions = extractMentions(content);
+        data.put("hashtags", hashtags);
+        data.put("mentions", mentions);
+
         try {
-            databases.createDocument(getString(R.string.APPWRITE_DATABASE_ID), getString(R.string.APPWRITE_POSTS_COLLECTION_ID), "unique()", // Generar un ID único automáticamente
-                    data, new ArrayList<>(), // Permisos opcionales, como ["role:all"]
+            databases.createDocument(
+                    getString(R.string.APPWRITE_DATABASE_ID),
+                    getString(R.string.APPWRITE_POSTS_COLLECTION_ID),
+                    "unique()", // Generar un ID único automáticamente
+                    data,
+                    new ArrayList<>(), // Permisos opcionales, como ["role:all"]
                     new CoroutineCallback<>((result, error) -> {
                         if (error != null) {
                             Snackbar.make(requireView(), "Error: " + error.toString(), Snackbar.LENGTH_LONG).show();
@@ -160,84 +177,70 @@ public class NewPostFragment extends Fragment {
                                 navController.popBackStack();
                             });
                         }
-                    }));
+                    })
+            );
         } catch (AppwriteException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private void pujaIguardarEnAppWrite(User<Map<String, Object>> user, final String postText) {
-        Handler mainHandler = new Handler(Looper.getMainLooper());
-        Storage storage = new Storage(client);
-        File tempFile = null;
-        try {
-            tempFile = getFileFromUri(getContext(), mediaUri);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-        storage.createFile(getString(R.string.APPWRITE_STORAGE_BUCKET_ID), // bucketId
-                "unique()", // fileId
-                InputFile.Companion.fromFile(tempFile), // file
-                new ArrayList<>(), // permissions (optional)
-                new CoroutineCallback<>((result, error) -> {
-                    if (error != null) {
-                        System.err.println("Error subiendo el archivo:" + error.getMessage());
-                        return;
-                    }
-                    String downloadUrl = "https://cloud.appwrite.io/v1/storage/buckets/" + getString(R.string.APPWRITE_STORAGE_BUCKET_ID) + "/files/" + result.getId() + "/view?project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&project=" + getString(R.string.APPWRITE_PROJECT_ID) + "&mode=admin";
+    // Método para detectar hashtags y menciones en el texto
+    void detectHashtagsAndMentions(String text) {
+        List<String> hashtags = extractHashtags(text);
+        List<String> mentions = extractMentions(text);
 
-                    mainHandler.post(() -> {
-                        guardarEnAppWrite(user, postText, downloadUrl);
+        // Aquí puedes hacer algo con los hashtags y mentions detectados, como mostrarlos en la UI
+        System.out.println("Hashtags detectados: " + hashtags);
+        System.out.println("Menciones detectadas: " + mentions);
+    }
+
+    // Método para extraer hashtags del texto
+    List<String> extractHashtags(String text) {
+        List<String> hashtags = new ArrayList<>();
+        Pattern pattern = Pattern.compile("#(\\w+)");
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            hashtags.add(matcher.group(1));
+        }
+        return hashtags;
+    }
+
+    // Método para extraer menciones del texto
+    List<String> extractMentions(String text) {
+        List<String> mentions = new ArrayList<>();
+        Pattern pattern = Pattern.compile("@(\\w+)");
+        Matcher matcher = pattern.matcher(text);
+        while (matcher.find()) {
+            mentions.add(matcher.group(1));
+        }
+        return mentions;
+    }
+
+    // Métodos para manejar la selección de medios (fotos, videos, audio)
+    private final ActivityResultLauncher<String> galeria =
+            registerForActivityResult(new ActivityResultContracts.GetContent(),
+                    uri -> {
+                        appViewModel.setMediaSeleccionado(uri, mediaTipo);
                     });
-                }));
-    }
 
-    public File getFileFromUri(Context context, Uri uri) throws Exception {
-        InputStream inputStream = context.getContentResolver().openInputStream(uri);
-        if (inputStream == null) {
-            throw new FileNotFoundException("No se pudo abrir el URI: " + uri);
-        }
-        String fileName = getFileName(context, uri);
-        File tempFile = new File(context.getCacheDir(), fileName);
-        FileOutputStream outputStream = new FileOutputStream(tempFile);
-        byte[] buffer = new byte[1024];
-        int length;
-        while ((length = inputStream.read(buffer)) > 0) {
-            outputStream.write(buffer, 0, length);
-        }
-        outputStream.close();
-        inputStream.close();
-        return tempFile;
-    }
+    private final ActivityResultLauncher<Uri> camaraFotos =
+            registerForActivityResult(new ActivityResultContracts.TakePicture(),
+                    isSuccess -> {
+                        appViewModel.setMediaSeleccionado(mediaUri, "image");
+                    });
 
-    private String getFileName(Context context, Uri uri) {
-        String fileName = "temp_file";
-        try (Cursor cursor = context.getContentResolver().query(uri, null, null, null, null)) {
-            if (cursor != null && cursor.moveToFirst()) {
-                int nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
-                if (nameIndex != -1) {
-                    fileName = cursor.getString(nameIndex);
+    private final ActivityResultLauncher<Uri> camaraVideos =
+            registerForActivityResult(new ActivityResultContracts.TakeVideo(),
+                    isSuccess -> {
+                        appViewModel.setMediaSeleccionado(mediaUri, "video");
+                    });
+
+    private final ActivityResultLauncher<Intent> grabadoraAudio =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
+                if (result.getResultCode() == Activity.RESULT_OK) {
+                    appViewModel.setMediaSeleccionado(result.getData().getData(), "audio");
                 }
-            }
-        }
-        return fileName;
-    }
-
-
-    private final ActivityResultLauncher<String> galeria = registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
-        appViewModel.setMediaSeleccionado(uri, mediaTipo);
-    });
-    private final ActivityResultLauncher<Uri> camaraFotos = registerForActivityResult(new ActivityResultContracts.TakePicture(), isSuccess -> {
-        appViewModel.setMediaSeleccionado(mediaUri, "image");
-    });
-    private final ActivityResultLauncher<Uri> camaraVideos = registerForActivityResult(new ActivityResultContracts.TakeVideo(), isSuccess -> {
-        appViewModel.setMediaSeleccionado(mediaUri, "video");
-    });
-    private final ActivityResultLauncher<Intent> grabadoraAudio = registerForActivityResult(new ActivityResultContracts.StartActivityForResult(), result -> {
-        if (result.getResultCode() == Activity.RESULT_OK) {
-            appViewModel.setMediaSeleccionado(result.getData().getData(), "audio");
-        }
-    });
+            });
 
     private void seleccionarImagen() {
         mediaTipo = "image";
@@ -246,7 +249,6 @@ public class NewPostFragment extends Fragment {
 
     private void seleccionarVideo() {
         mediaTipo = "video";
-
         galeria.launch("video/*");
     }
 
@@ -257,26 +259,30 @@ public class NewPostFragment extends Fragment {
 
     private void tomarFoto() {
         try {
-            mediaUri = FileProvider.getUriForFile(requireContext(), "com.example.socialapp" + ".fileprovider", File.createTempFile("img", ".jpg",
-
-                    requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES)));
+            mediaUri = FileProvider.getUriForFile(requireContext(),
+                    "com.example.puigtagram" + ".fileprovider",
+                    File.createTempFile("img", ".jpg",
+                            requireContext().getExternalFilesDir(Environment.DIRECTORY_PICTURES))
+            );
             camaraFotos.launch(mediaUri);
         } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     private void tomarVideo() {
         try {
-            mediaUri = FileProvider.getUriForFile(requireContext(), "com.example.socialapp" + ".fileprovider", File.createTempFile("vid", ".mp4",
-
-                    requireContext().getExternalFilesDir(Environment.DIRECTORY_MOVIES)));
+            mediaUri = FileProvider.getUriForFile(requireContext(),
+                    "com.example.puigtagram" + ".fileprovider",
+                    File.createTempFile("vid", ".mp4",
+                            requireContext().getExternalFilesDir(Environment.DIRECTORY_MOVIES)));
             camaraVideos.launch(mediaUri);
         } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     private void grabarAudio() {
         grabadoraAudio.launch(new Intent(MediaStore.Audio.Media.RECORD_SOUND_ACTION));
     }
-
 }

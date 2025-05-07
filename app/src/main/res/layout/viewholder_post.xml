@@ -51,7 +51,7 @@
                 android:paddingTop="4dp"/>
 
             <TextView
-                android:id="@+id/mencionesTextView"
+                android:id="@+id/mentionsTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="#FF9800"
